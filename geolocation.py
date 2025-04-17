@@ -7,6 +7,41 @@ from phi.utils.pprint import pprint_run_response
 from typing import Iterator, List, Dict, Any
 from phi.tools.duckduckgo import DuckDuckGo
 from phi.tools.newspaper4k import Newspaper4k
+from geopy.geocoders import Nominatim
+import time
+
+def get_location_coordinates(location_name: str) -> str:
+    """
+    Get the GPS coordinates (latitude and longitude) for a specified location.
+    
+    Args:
+        location_name (str): The name of the location to geocode (e.g., "Eiffel Tower, Paris, France")
+    
+    Returns:
+        str: JSON string containing the address, latitude, and longitude of the location
+    """
+    try:
+        # Initialize the geocoder with a custom user agent
+        geolocator = Nominatim(user_agent="TravelPlannerAgent")
+        
+        # Get location information
+        location = geolocator.geocode(location_name, exactly_one=True)
+        
+        # Add a small delay to respect usage limits
+        time.sleep(1)
+        
+        if location:
+            result = {
+                "address": location.address,
+                "latitude": location.latitude,
+                "longitude": location.longitude
+            }
+            return str(result)
+        else:
+            return f"Coordinates not found for '{location_name}'. Try providing more details like city or country."
+    
+    except Exception as e:
+        return f"Error getting coordinates: {str(e)}. Try another location name or format."
 
 class InteractiveTravelAgent:
     def __init__(self):
@@ -29,17 +64,18 @@ class InteractiveTravelAgent:
                     factorial=True,
                     is_prime=True,
                     square_root=True,
-                )
+                ),
+                get_location_coordinates
             ],
             description="You are a seasoned travel agent or trip itinerary planner specializing in crafting seamless, personalized travel experiences.",
             instructions=[
                 """Your role is to guide the user through an interactive trip planning process with these steps:
                 
                 1. First, research and suggest popular attractions/places in the requested destination
-                2. For each suggested place, use search to find and include its exact GPS coordinates (latitude, longitude)
+                2. For each suggested place, use the get_location_coordinates tool to find and include its exact GPS coordinates
                 3. Ask the user to select which places they're interested in visiting from your suggestions
                 4. Based on their selections, recommend hotels/accommodations in different budget ranges
-                5. For each accommodation, also include its GPS coordinates
+                5. For each accommodation, also use the get_location_coordinates tool to get its GPS coordinates
                 6. Ask the user to select their preferred accommodation
                 7. Finally, create a detailed day-by-day itinerary including all selected places, accommodations, transportation options, and budget estimates
                 
@@ -47,7 +83,7 @@ class InteractiveTravelAgent:
                 Remember to use search tools to get up-to-date information about attractions, hotels, and other details.
                 When calculating budgets, break down costs for accommodation, meals, transportation, and activities.
                 
-                IMPORTANT: Always include GPS coordinates (latitude, longitude) for every attraction and accommodation you suggest. When looking up coordinates, make precise searches like "GPS coordinates of [exact place name] in [city/region]" to get accurate results.
+                IMPORTANT: Always use the get_location_coordinates tool to get precise GPS coordinates for every attraction and accommodation you suggest. Make sure to specify the full location name including city/region/country for accurate results.
                 """
             ],
             show_tool_calls=True,
@@ -61,7 +97,7 @@ class InteractiveTravelAgent:
         
         For each attraction you suggest:
         1. Provide a brief description
-        2. Search for and include the exact GPS coordinates (latitude, longitude)
+        2. Use the get_location_coordinates tool to find its exact GPS coordinates
         3. Number each suggestion for easy reference
         
         Format each attraction with its coordinates clearly visible."""
@@ -87,7 +123,7 @@ class InteractiveTravelAgent:
         
         For each accommodation:
         1. Provide name, description and approximate price range
-        2. Search for and include its exact GPS coordinates (latitude, longitude)
+        2. Use the get_location_coordinates tool to find its exact GPS coordinates
         3. Mention its proximity to selected attractions
         4. Number each suggestion for easy reference
         
@@ -114,16 +150,16 @@ class InteractiveTravelAgent:
         3. Transportation recommendations between attractions
         4. Meal suggestions including local cuisine
         5. Estimated budget breakdown for the entire trip
-        6. Include GPS coordinates for every location mentioned in the itinerary
+        6. Include GPS coordinates for every location mentioned in the itinerary (you can reference previously found coordinates)
         
-        Organize by day and include estimated times for activities. Make sure all places have their exact coordinates listed."""
+        Organize by day and include estimated times for activities."""
         
         response_stream = self.agent.run(query, stream=True)
         pprint_run_response(response_stream, markdown=True, show_time=True)
         
     def run(self):
         """Run the interactive travel agent workflow"""
-        print("Welcome to the Interactive Travel Planner with Location Coordinates!")
+        print("Welcome to the Interactive Travel Planner with Precise Location Coordinates!")
         destination = input("Enter your destination: ")
         duration = input("Enter the duration of your trip (e.g., 3 days): ")
         
